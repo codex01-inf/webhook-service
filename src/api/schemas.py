@@ -1,0 +1,29 @@
+from pydantic import BaseModel, ConfigDict
+from uuid import UUID
+from datetime import datetime
+
+
+class EventCreate(BaseModel):
+    endpoint_id: UUID
+    payload: dict
+
+
+class EventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)  # lets you do EventOut.model_validate(orm_obj)
+    id: UUID
+    status: str
+    attempts: int
+    created_at: datetime
+
+
+class AttemptOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    attempt_number: int
+    status_code: int | None
+    error: str | None
+    duration_ms: int | None
+    attempted_at: datetime
+
+
+class EventDetail(EventOut):
+    attempts_log: list[AttemptOut]

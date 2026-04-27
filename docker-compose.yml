@@ -5,20 +5,20 @@ services:
       POSTGRES_PASSWORD: dev
       POSTGRES_DB: webhooks
     ports: ["5432:5432"]
-    volumes:
-      - .src/db/data:/var/lib/postgresql/data
+#    volumes:
+#      - .src/db/data:/var/lib/postgresql/data
   redis:
     image: redis:7
     ports: ["6379:6379"]
   api:
     build: .
-    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
-    ports: ["8000:8000"]
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8001
+    ports: ["8001:8001"]
     depends_on: [postgres, redis]
   worker:
     build: .
     command: python -m src.worker.main
     depends_on: [postgres, redis]
-  mock_receiver:
-    build: ./mock_receiver
-    ports: ["9000:9000"]
+#  mock_receiver:
+#    build: ./mock_receiver
+#    ports: ["9000:9000"]
