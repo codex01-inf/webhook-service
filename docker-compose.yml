@@ -19,6 +19,6 @@ services:
     build: .
     command: python -m src.worker.main
     depends_on: [postgres, redis]
-#  mock_receiver:
-#    build: ./mock_receiver
-#    ports: ["9000:9000"]
+  mock_receiver:
+    build: ./mock_receiver
+    ports: ["9000:9000"]

@@ -27,3 +27,15 @@ class AttemptOut(BaseModel):
 
 class EventDetail(EventOut):
     attempts_log: list[AttemptOut]
+
+
+class EndpointCreate(BaseModel):
+    tenant_id: str
+    url: str
+
+
+class EndpointOut(BaseModel):
+    id: UUID
+    tenant_id: str
+    url: str
+    created_at: datetime
