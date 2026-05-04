@@ -1,8 +1,16 @@
 FROM python:3.11-slim
 
-WORKDIR .
+WORKDIR /app
 
-RUN pip install fastapi uvicorn redis psycopg2-binary
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn \
+    sqlalchemy \
+    asyncpg \
+    psycopg2-binary \
+    httpx \
+    pydantic-settings \
+    redis
 
 COPY . .
 

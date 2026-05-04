@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from src.api.routes import events
+from src.api.routes import events, endpoints
 from src.db import models
 from src.db.session import engine
 
@@ -15,6 +15,7 @@ app = FastAPI()
 
 # Plug in the routers
 app.include_router(events.router)
+app.include_router(endpoints.router)
 
 
 @app.get("/")
