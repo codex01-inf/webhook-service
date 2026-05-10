@@ -17,3 +17,18 @@ CREATE TABLE events (
 );
 
 CREATE INDEX idx_events_due ON events (next_attempt_at) WHERE status = 'pending';
+
+ALTER TABLE events ADD COLUMN idempotency_key TEXT;
+CREATE UNIQUE INDEX idx_events_idem
+    ON events (tenant_id, idempotency_key)
+    WHERE idempotency_key IS NOT NULL;
+
+CREATE TABLE delivery_attempts (
+    id              BIGSERIAL PRIMARY KEY,
+    event_id        UUID REFERENCES events(id),
+    attempt_number  INT  NOT NULL,
+    status_code     INT,                  -- HTTP status returned
+    error           TEXT,                 -- if request failed pre-response
+    duration_ms     INT,
+    attempted_at    TIMESTAMPTZ DEFAULT now()
+);

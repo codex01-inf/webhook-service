@@ -54,3 +54,17 @@ services:
   mock_receiver:
     build: ./mock_receiver
     ports: ["9000:9000"]
+
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports: [ "9090:9090" ]
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    ports: [ "3000:3000" ]
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=dev
+    depends_on: [ prometheus ]

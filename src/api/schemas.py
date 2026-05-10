@@ -13,6 +13,7 @@ class EventOut(BaseModel):
     id: UUID
     status: str
     attempts: int
+    idempotency_key: str | None = None
     created_at: datetime
 
 
@@ -26,6 +27,7 @@ class AttemptOut(BaseModel):
 
 
 class EventDetail(EventOut):
+    model_config = ConfigDict(from_attributes=True)
     attempts_log: list[AttemptOut]
 
 

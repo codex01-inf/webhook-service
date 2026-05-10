@@ -10,7 +10,8 @@ RUN pip install --no-cache-dir \
     psycopg2-binary \
     httpx \
     pydantic-settings \
-    redis
+    redis \
+    prometheus-client
 
 COPY . .
 
