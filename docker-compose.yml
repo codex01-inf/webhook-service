@@ -52,6 +52,8 @@ services:
 
 
   mock_receiver:
+    environment:
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
     build: ./mock_receiver
     ports: ["9000:9000"]
 

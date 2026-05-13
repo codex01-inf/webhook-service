@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s      # pull metrics every 15 seconds
+  evaluation_interval: 15s  # evaluate alert rules every 15 seconds
+
+scrape_configs:
+
+  - job_name: "api"
+    # If API runs locally (not in Docker), use host.docker.internal:8000
+    # If API runs in Docker, use api:8001
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+
+  - job_name: "worker"
+    # Worker runs locally → Prometheus (in Docker) must reach it via host.docker.internal
+    # If worker runs in Docker instead, change to: worker:9100
+    static_configs:
+      - targets: ["host.docker.internal:9100"]

@@ -37,7 +37,9 @@ class EndpointCreate(BaseModel):
 
 
 class EndpointOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     tenant_id: str
+    signing_secret: str
     url: str
     created_at: datetime

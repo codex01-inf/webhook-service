@@ -1,4 +1,5 @@
 import uuid
+import secrets
 from datetime import datetime
 from sqlalchemy import String, Integer, ForeignKey, JSON, DateTime, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -15,6 +16,7 @@ class Endpoint(Base):
     tenant_id: Mapped[str] = mapped_column(String, index=True)
     url: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    signing_secret: Mapped[str] = mapped_column(String, default=lambda: secrets.token_hex(32))
 
     events: Mapped[list["Event"]] = relationship(back_populates="endpoint")
 
