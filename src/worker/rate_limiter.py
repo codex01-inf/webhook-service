@@ -1,6 +1,7 @@
 import redis.asyncio as aioredis
 
-REDIS_URL = "redis://localhost:6379"
+from src.config import settings
+
 RATE_LIMIT = 100  # deliveries per second per tenant
 
 # Lua script: atomic check-and-decrement token bucket
@@ -37,7 +38,7 @@ _script = None
 async def get_redis():
     global _redis, _script
     if _redis is None:
-        _redis = aioredis.from_url(REDIS_URL)
+        _redis = aioredis.from_url(settings.REDIS_URL)
         _script = _redis.register_script(LUA_SCRIPT)
     return _redis, _script
 

@@ -1,7 +1,8 @@
 import time
 import redis.asyncio as aioredis
 
-REDIS_URL = "redis://localhost:6379"
+from src.config import settings
+
 WINDOW = 20  # last N attempts
 TRIP_THRESHOLD = 0.5  # trip if >50% failures
 OPEN_DURATION = 60  # stay open for 60s
@@ -14,7 +15,7 @@ _redis = None
 async def get_redis():
     global _redis
     if _redis is None:
-        _redis = aioredis.from_url(REDIS_URL)
+        _redis = aioredis.from_url(settings.REDIS_URL)
     return _redis
 
 

@@ -1,15 +1,15 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from src.config import Constants
+from src.config import settings
 
-engine = create_engine(Constants.DATABASE_URL, pool_pre_ping=True, pool_size=10)
+engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True, pool_size=10)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 # Async — used by the worker (httpx is async, so we go async end-to-end)
 # DATABASE_URL must look like: postgresql+asyncpg://user:pass@host/db
 async_engine = create_async_engine(
-    Constants.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+    settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
     pool_pre_ping=True,
     pool_size=10,
 )

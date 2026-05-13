@@ -49,7 +49,7 @@ A backend service that accepts events from your application and reliably deliver
               ┌────────────────────────────┐
               │  events                    │
               │  delivery_attempts         │ (Postgres)
-              │  endpoints                 │
+              │  endpoint                 │
               └────────────┬───────────────┘
                            │ SELECT ... FOR UPDATE SKIP LOCKED
                            ▼
@@ -67,13 +67,13 @@ A backend service that accepts events from your application and reliably deliver
 
 ### Guarantees
 
-| Property | Guarantee |
-|---|---|
-| Delivery | At-least-once (idempotency key lets receivers safely dedupe) |
-| Ordering | Per-(tenant, endpoint), best-effort by enqueue time. Not strict — under retry, an earlier-enqueued failing event may be redelivered after later successful ones. |
-| Persistence | Events are durable from the moment the API returns 202 |
-| Isolation | Per-tenant rate limit + per-endpoint circuit breaker prevent cross-tenant interference |
-| Security | HMAC-SHA256 signature over `timestamp.body`; receiver rejects requests older than 5 min |
+| Property    | Guarantee                                                                                                                                                        |
+|-------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Delivery    | At-least-once (idempotency key lets receivers safely dedupe)                                                                                                     |
+| Ordering    | Per-(tenant, endpoint), best-effort by enqueue time. Not strict — under retry, an earlier-enqueued failing event may be redelivered after later successful ones. |
+| Persistence | Events are durable from the moment the API returns 202                                                                                                           |
+| Isolation   | Per-tenant rate limit + per-endpoint circuit breaker prevent cross-tenant interference                                                                           |
+| Security    | HMAC-SHA256 signature over `timestamp.body`; receiver rejects requests older than 5 min                                                                          |
 
 ---
 
@@ -87,33 +87,33 @@ docker compose up -d
 docker compose run --rm api alembic upgrade head
 
 # register an endpoint
-EP=$(curl -s -X POST localhost:8000/endpoints \
+EP=$(curl -s -X POST localhost:8000/endpoint \
   -H "content-type: application/json" \
   -d '{"tenant_id": "demo", "url": "http://mock_receiver:9000/webhook"}' | jq -r .id)
 
 # send an event (idempotent — repeat the same call, get the same event_id back)
-curl -X POST localhost:8000/events \
+curl -X POST localhost:8000/webhooks/events \
   -H "content-type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
   -d "{\"endpoint_id\": \"$EP\", \"payload\": {\"hello\": \"world\"}}"
 
 # inspect
-curl localhost:8000/events/<event_id> | jq
+curl localhost:8000/webhooks/events/<event_id> | jq
 ```
 
 Within ~500 ms the mock receiver logs the payload and the event status flips to `succeeded`.
 
 ### API reference (high-level)
 
-| Method | Path | Purpose |
-|---|---|---|
-| `POST` | `/endpoints` | Register a webhook URL for a tenant |
-| `POST` | `/events` | Enqueue an event (supports `Idempotency-Key` header) |
-| `GET` | `/events/{id}` | Event status + full attempts log |
-| `POST` | `/events/{id}/replay` | Move a dead event back to pending |
-| `GET` | `/dlq` | List dead-letter events |
-| `GET` | `/metrics` | Prometheus exposition |
-| `GET` | `/health` | Liveness probe |
+| Method | Path                           | Purpose                                              |
+|--------|--------------------------------|------------------------------------------------------|
+| `POST` | `/endpoint`                    | Register a webhook URL for a tenant                  |
+| `POST` | `/webhooks/events`             | Enqueue an event (supports `Idempotency-Key` header) |
+| `GET`  | `/webhooks/events/{id}`        | Event status + full attempts log                     |
+| `POST` | `/webhooks/events/{id}/replay` | Move a dead event back to pending                    |
+| `GET`  | `/webhooks/dlq`                | List dead-letter events                              |
+| `GET`  | `/metrics`                     | Prometheus exposition                                |
+| `GET`  | `/health`                      | Liveness probe                                       |
 
 Full OpenAPI spec at `localhost:8000/docs` once the stack is up.
 
@@ -123,14 +123,14 @@ Full OpenAPI spec at `localhost:8000/docs` once the stack is up.
 
 Designed for **moderate scale**, not hyperscale. Real numbers:
 
-| Metric | Target | Notes |
-|---|---|---|
-| Sustained throughput | ~1k events/sec | Single-node Postgres + 4 async worker processes on a laptop |
-| Peak burst | ~5k events/sec | Limited by Postgres write throughput; gen-purpose SSD |
-| P95 end-to-end delivery latency (happy path) | < 1 s | API → DB → worker pickup → HTTP roundtrip |
-| Payload size | ≤ 256 KB | Hard cap at API layer; larger payloads should use signed URLs |
-| Retention | 30 days | Events older than 30d archived to S3; DLQ kept indefinitely |
-| Storage @ 100M events/day | ~200 GB/day | 2 KB avg per event row + attempts log |
+| Metric                                       | Target         | Notes                                                         |
+|----------------------------------------------|----------------|---------------------------------------------------------------|
+| Sustained throughput                         | ~1k events/sec | Single-node Postgres + 4 async worker processes on a laptop   |
+| Peak burst                                   | ~5k events/sec | Limited by Postgres write throughput; gen-purpose SSD         |
+| P95 end-to-end delivery latency (happy path) | < 1 s          | API → DB → worker pickup → HTTP roundtrip                     |
+| Payload size                                 | ≤ 256 KB       | Hard cap at API layer; larger payloads should use signed URLs |
+| Retention                                    | 30 days        | Events older than 30d archived to S3; DLQ kept indefinitely   |
+| Storage @ 100M events/day                    | ~200 GB/day    | 2 KB avg per event row + attempts log                         |
 
 **When this design stops working:**
 
@@ -220,7 +220,7 @@ Three honest answers if this had to handle 100k events/sec across regions:
 
 ```bash
 # install dev deps
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 
 # run tests
 docker compose up -d postgres redis
@@ -243,25 +243,36 @@ docker compose run --rm api alembic upgrade head
 webhook-service/
 ├── docker-compose.yml
 ├── alembic.ini
+├── prometheus.yml             Prometheus scrape config
+├── pyproject.toml
+├── README.md
+├── ARCHITECTURE.md            Architecture Decision Records
+├── locustfile.py              Locust load-test entry point
 ├── migrations/
+│   ├── env.py
+│   └── versions/              Alembic migration revisions
 ├── src/
-│   ├── api/                  FastAPI app
-│   │   ├── main.py
-│   │   ├── deps.py
+│   ├── config.py              Pydantic settings (env-driven)
+│   ├── api/                   FastAPI app
+│   │   ├── main.py            App assembly + /health + /metrics
+│   │   ├── schemas.py         Pydantic request/response models
 │   │   └── routes/
-│   ├── worker/               Async delivery worker
-│   ├── db/                   SQLAlchemy models + session
-│   ├── schemas/              Pydantic API schemas
-│   ├── delivery/             Backoff, breaker, signing, rate-limit
-│   └── config.py
-├── mock_receiver/            Flaky test receiver
+│   │       ├── endpoints.py   Endpoint registration
+│   │       └── events.py      Event ingest, retrieval, replay, DLQ
+│   ├── db/                    SQLAlchemy ORM + session setup
+│   │   ├── models.py          Endpoint, Event, DeliveryAttempt
+│   │   └── session.py         Sync + async engines
+│   └── worker/                Async delivery worker
+│       ├── main.py            Claim / deliver / finalize loop
+│       ├── circuit_breaker.py Redis-backed sliding-window breaker
+│       └── rate_limiter.py    Per-tenant token bucket (Redis + Lua)
+├── mock_receiver/             Flaky test receiver with HMAC verify
+│   ├── main.py
+│   └── Dockerfile
 ├── scripts/
-│   ├── seed.py
-│   └── load_test.py          Locust scenario for fairness test
-├── tests/
-└── docs/
-    ├── images/
-    └── ARCHITECTURE.md
+│   ├── seed.py                Seed sample endpoints / events
+│   └── load_test.py           Locust scenario for fairness test
+└── media/                     Screenshots referenced from README
 ```
 
 ---

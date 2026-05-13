@@ -6,7 +6,13 @@ services:
       POSTGRES_DB: webhooks
     ports: ["5432:5432"]
     volumes:
-      - ./src/db/data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d webhooks" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 
   redis:
@@ -32,11 +38,11 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:dev@postgres:5432/webhooks
     build: .
-    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8001
-    ports: ["8001:8001"]
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    ports: ["8000:8000"]
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_started
 #      migrate:
@@ -46,6 +52,7 @@ services:
   worker:
     environment:
       - DATABASE_URL=postgresql://postgres:dev@postgres:5432/webhooks
+      - REDIS_URL=redis://redis:6379
     build: .
     command: python -m src.worker.main
     depends_on: [postgres, redis]
@@ -70,3 +77,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=dev
     depends_on: [ prometheus ]
+
+
+volumes:
+  postgres_data:

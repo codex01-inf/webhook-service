@@ -5,17 +5,17 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from src.config import Constants
+from src.config import settings
 from src.db.models import Base
 import src.db.models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-print(Constants.DATABASE_URL)
+print(settings.DATABASE_URL)
 config = context.config
 
 # tell alembic where the DB is (overrides alembic.ini)
-config.set_main_option("sqlalchemy.url", Constants.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # tell alembic what your model metadata is (so autogenerate compares model vs DB)
 target_metadata = Base.metadata
