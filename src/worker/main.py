@@ -16,8 +16,8 @@ from src.db.session import AsyncSessionLocal
 from src.db.models import Event, Endpoint, DeliveryAttempt
 from src.worker.circuit_breaker import is_open, record_attempt
 
-DELIVERIES = Counter("webhook_deliveries_total", "Deliveries by outcome", ["status"])
-DURATION = Histogram("webhook_delivery_duration_seconds", "HTTP delivery latency")
+DELIVERIES = Counter("webhook_deliveries_total", "Deliveries by outcome", ["status", "tenant_id"])
+DURATION = Histogram("webhook_delivery_duration_seconds", "HTTP delivery latency", ["tenant_id"])
 
 log = logging.getLogger("worker")
 
@@ -124,8 +124,8 @@ async def finalize(event, status_code, error, duration_ms):
              f"status_code={status_code}, duration_ms={duration_ms}, error={error}")
 
     # prometheus
-    DELIVERIES.labels(status=new_status).inc()
-    DURATION.observe(duration_ms / 1000)
+    DELIVERIES.labels(status=new_status, tenant_id=event.tenant_id).inc()
+    DURATION.labels(tenant_id=event.tenant_id).observe(duration_ms / 1000)
 
 
 # async def finalize(
