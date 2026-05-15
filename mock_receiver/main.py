@@ -21,22 +21,36 @@ app = FastAPI(title="Mock Webhook Receiver")
 #
 
 
+TIMESTAMP_WINDOW_S = 300   # reject signed requests whose timestamp drifts > 5 min
+
+
 @app.post("/webhook")
 async def receive(request: Request):
     ts = request.headers.get("X-Webhook-Timestamp", "")
     sig = request.headers.get("X-Webhook-Signature", "")
     body = await request.body()
-    # print(f"BODY in mock: {body.decode()}")
 
-    # verify signature if WEBHOOK_SECRET is configured
+    # verify signature + timestamp window if WEBHOOK_SECRET is configured
     if WEBHOOK_SECRET:
+        if not ts:
+            log.warning("missing X-Webhook-Timestamp header")
+            return responses.JSONResponse({"error": "missing timestamp"}, status_code=400)
+        try:
+            skew = abs(int(time.time()) - int(ts))
+        except (TypeError, ValueError):
+            log.warning("invalid timestamp header: %r", ts)
+            return responses.JSONResponse({"error": "invalid timestamp"}, status_code=400)
+        if skew > TIMESTAMP_WINDOW_S:
+            log.warning("timestamp out of window: skew=%ds (max=%ds)", skew, TIMESTAMP_WINDOW_S)
+            return responses.JSONResponse({"error": "timestamp out of window"}, status_code=401)
+
         expected = "sha256=" + hmac.new(
             WEBHOOK_SECRET.encode(), f"{ts}.{body.decode()}".encode(), hashlib.sha256
         ).hexdigest()
         if not hmac.compare_digest(sig, expected):
             log.warning("invalid signature — possible forgery or wrong secret")
             return responses.JSONResponse({"error": "invalid signature"}, status_code=401)
-        log.info("signature verified OK")
+        log.info("signature + timestamp verified OK (skew=%ds)", skew)
     else:
         log.info("HMAC header present=%s sig_prefix=%s (no secret set, skipping verify)", bool(sig), sig[:20] if sig else "none")
 

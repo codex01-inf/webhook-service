@@ -146,11 +146,11 @@ Setup: 10 tenants, ~5k events. **Tenant `noisy` is configured with a black-hole 
 Run:
 ```bash
 docker compose up -d
-locust -f scripts/load_test.py --host=http://localhost:8000 \
+locust -f locustfile.py --host=http://localhost:8000 \
        --users 50 --spawn-rate 10 --run-time 5m --headless
 ```
 
-<!-- SCREENSHOT: locust results dashboard. Save to docs/images/load_test.png -->
+<!-- SCREENSHOT: locust results dashboard. -->
 ![Load test results](media/loadtesting2.png)
 
 <!-- SCREENSHOT: Grafana panel showing per-tenant delivery success rates over time. Save to docs/images/grafana_fairness.png -->
@@ -169,18 +169,18 @@ locust -f scripts/load_test.py --host=http://localhost:8000 \
 
 ## Tech stack
 
-| Layer                      | Choice                                  | Why                                                                 |
-|----------------------------|-----------------------------------------|---------------------------------------------------------------------|
-| HTTP framework             | FastAPI                                 | Async-native, OpenAPI for free, typed                               |
-| Database                   | Postgres 16                             | `FOR UPDATE SKIP LOCKED` is the queue primitive; JSONB for payloads |
-| Queue                      | Postgres table                          | Simpler than Kafka; sufficient at target scale                      |
-| Cache / breakers / buckets | Redis 7                                 | Atomic ops via Lua; sub-ms latency                                  |
-| HTTP client                | httpx (async)                           | Async = high concurrency without thread overhead                    |
-| Worker                     | Plain asyncio loop                      | Celery hides mechanics; this is intentionally explicit              |
-| Migrations                 | Alembic                                 | Schema-as-code, including partial indexes via `op.execute`          |
-| Observability              | structlog + prometheus-client + Grafana | Real-world stack                                                    |
-| Tests                      | pytest + httpx + testcontainers         | Isolated Postgres per test run                                      |
-| Container                  | Docker + docker-compose                 | One-command bring-up                                                |
+| Layer                      | Choice                                | Why                                                                 |
+|----------------------------|---------------------------------------|---------------------------------------------------------------------|
+| HTTP framework             | FastAPI                               | Async-native, OpenAPI for free, typed                               |
+| Database                   | Postgres 16                           | `FOR UPDATE SKIP LOCKED` is the queue primitive; JSONB for payloads |
+| Queue                      | Postgres table                        | Simpler than Kafka; sufficient at target scale                      |
+| Cache / breakers / buckets | Redis 7                               | Atomic ops via Lua; sub-ms latency                                  |
+| HTTP client                | httpx (async)                         | Async = high concurrency without thread overhead                    |
+| Worker                     | Plain asyncio loop                    | Celery hides mechanics; this is intentionally explicit              |
+| Migrations                 | Alembic                               | Schema-as-code, including partial indexes via `op.execute`          |
+| Observability              | logging + prometheus-client + Grafana | Real-world stack                                                    |
+| Tests                      | pytest + httpx + testcontainers       | Isolated Postgres per test run                                      |
+| Container                  | Docker + docker-compose               | One-command bring-up                                                |
 
 ---
 

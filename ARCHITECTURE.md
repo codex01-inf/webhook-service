@@ -133,20 +133,22 @@ delay = random.uniform(0, base * 2 ** attempt)
 
 ---
 
-## ADR-008 — Idempotency contract (Stripe-style)
+## ADR-008 — Idempotency contract
 
 **Status:** Accepted
 
 **Context.** Callers may retry POST `/events` after network errors. We must not double-enqueue.
 
-**Decision.** If caller provides `Idempotency-Key`:
+**Decision.** If the caller provides `Idempotency-Key`:
 - First request creates the event and returns 202 with the event id.
-- Any subsequent request with the same `(tenant_id, idempotency_key)` within 24h returns the **same event id** (HTTP 200, not 202).
-- After 24h, the key is eligible for reuse.
+- Any subsequent request with the same `(tenant_id, idempotency_key)` returns the **same event id** (HTTP 200, not 202).
+- Idempotency keys are unique for the lifetime of the event row. Clients should generate a fresh key per independent request (UUIDs are the standard choice).
 
-**Rationale.** Stripe's contract is the de-facto standard for fintech APIs. The 24h window covers all realistic retry storms while keeping the unique index small enough to fit comfortably in memory.
+**Rationale.** Permanent uniqueness is the simplest correct contract: a single Postgres partial unique index enforces it with zero background machinery. Stripe's 24-hour reuse window is more ergonomic for callers but requires a periodic sweeper to null out `idempotency_key` on events older than 24h — extra moving parts that aren't worth the convenience for a learning project.
 
-**Trade-off accepted.** A unique partial index on `(tenant_id, idempotency_key)` adds modest write overhead and storage. The index is partial (`WHERE idempotency_key IS NOT NULL`) so events without a key are not indexed.
+**Trade-off accepted.** A unique partial index on `(tenant_id, idempotency_key)` adds modest write overhead and storage. The index is partial (`WHERE idempotency_key IS NOT NULL`) so events without a key are not indexed. Clients that accidentally reuse keys across unrelated requests will get back stale event ids — a deliberate "fail loud" choice over silent overwrite.
+
+**Future work.** Add Stripe-style 24h reuse via a periodic sweeper if customer ergonomics demand it. Migration is non-breaking: existing keys continue to work, the sweeper just nulls them out after 24h to free reuse.
 
 ---
 
