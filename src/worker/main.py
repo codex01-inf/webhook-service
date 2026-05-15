@@ -3,7 +3,7 @@ import time
 import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
-import hashlib, hmac, time as _time
+import hashlib, hmac
 import random
 
 import httpx
@@ -64,7 +64,7 @@ async def claim_batch(session: AsyncSession) -> list[tuple[Event, str, str]]:
 async def deliver_one(client, event, endpoint_url, signing_secret) -> tuple[int | None, str | None, int]:
     loop = asyncio.get_event_loop()
     start = loop.time()
-    timestamp = str(int(_time.time()))
+    timestamp = str(int(time.time()))
     body = json.dumps(event.payload, separators=(",", ":"))
     # print(f"Inside deliver, sig being created and the secret being used={signing_secret}")
     # print(f"BODY in deliver: {body}")
@@ -126,28 +126,6 @@ async def finalize(event, status_code, error, duration_ms):
     # prometheus
     DELIVERIES.labels(status=new_status, tenant_id=event.tenant_id).inc()
     DURATION.labels(tenant_id=event.tenant_id).observe(duration_ms / 1000)
-
-
-# async def finalize(
-#         event: Event, status_code: int | None, error: str | None, duration_ms: int
-# ):
-#     success = status_code is not None and 200 <= status_code < 300
-#     new_status = "succeeded" if success else "failed"
-#
-#     async with AsyncSessionLocal() as session:
-#         await session.execute(
-#             update(Event)
-#             .where(Event.id == event.id)
-#             .values(status=new_status, attempts=Event.attempts + 1)
-#         )
-#         session.add(DeliveryAttempt(
-#             event_id=event.id,
-#             attempt_number=event.attempts + 1,
-#             status_code=status_code,
-#             error=error,
-#             duration_ms=duration_ms,
-#         ))
-#         await session.commit()
 
 
 async def process_event(client, event, endpoint_url, signing_secret):
